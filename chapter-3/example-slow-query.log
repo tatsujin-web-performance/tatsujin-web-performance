@@ -1,0 +1,6 @@
+ # Time: 2021-10-03T02:43:21.834477Z
+# User@Host: isuconp[isuconp] @ localhost [] Id: 8
+# Query_time: 0.006620 Lock_time: 0.000097 Rows_sent: 20 Rows_examined: 10034
+use isuconp;
+SET timestamp=1633229001;
+SELECT `id`, `user_id`, `body`, `created_at`, `mime` FROM `posts` ORDER BY `created_at` DESC LIMIT 20;
