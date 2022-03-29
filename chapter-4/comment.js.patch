@@ -1,0 +1,26 @@
+diff --git a/chapter-4/comment.js b/chapter-4/comment.js
+index fe517d3..6124c8d 100644
+--- a/chapter-4/comment.js
++++ b/chapter-4/comment.js
+@@ -10,13 +10,18 @@ import { parseHTML } from "k6/html";
+ // url関数をimport
+ import { url } from "./config.js";
+ 
++// getAccount 関数を accounts.js から import
++import { getAccount } from "./accounts.js";
++
+ // ベンチマーカーがが実行するシナリオ関数
+ // ログインしてからコメントを投稿する
+ export default function () {
+-  // /login に対してアカウント名とパスワードを送信
++  // ランダムに1アカウントを選択
++  const account = getAccount();
++  // /login に対して送信
+   const login_res = http.post(url("/login"), {
+-    account_name: "terra",
+-    password: "terraterra",
++    account_name: account.account_name,
++    password: account.password,
+   });
+ 
+   // レスポンスのステータスコードが 200 であることを確認
