@@ -25,6 +25,8 @@ server {
 }
 ```
 
+https://github.com/catatsuy/private-isu/blob/master/provisioning/image/files/etc/nginx/sites-available/isucon.conf
+
 ### リスト3 静的ファイルの配信をnginx経由で行う
 
 ```nginx
