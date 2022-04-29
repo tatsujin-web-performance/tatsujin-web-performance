@@ -94,6 +94,8 @@ upstream app {
 
 ## コラム：更なるnginx高速化
 
+### リスト8 sendfileとtcp_nopushを両方とも有効にする設定
+
 ```nginx
 sendfile on;
 tcp_nopush on;
