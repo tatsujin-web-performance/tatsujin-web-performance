@@ -7,7 +7,7 @@ gem "sinatra-contrib"
 gem "rack", '>= 2.1.0', '< 2.2.0'
 gem "foreman"
 gem "unicorn"
-gem "mysql2"
+gem "mysql2-cs-bind"
 gem "rack-flash3"
 gem 'connection_pool'
 gem "dalli"

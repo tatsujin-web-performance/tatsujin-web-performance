@@ -9,7 +9,9 @@ GEM
     multi_json (1.15.0)
     mustermann (1.1.1)
       ruby2_keywords (~> 0.0.1)
-    mysql2 (0.5.3)
+    mysql2 (0.5.4)
+    mysql2-cs-bind (0.1.1)
+      mysql2
     rack (2.1.4)
     rack-flash3 (1.0.5)
       rack
@@ -41,7 +43,7 @@ DEPENDENCIES
   connection_pool
   dalli
   foreman
-  mysql2
+  mysql2-cs-bind
   rack (>= 2.1.0, < 2.2.0)
   rack-flash3
   sinatra
