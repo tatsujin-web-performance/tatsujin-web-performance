@@ -30,6 +30,13 @@ module Isuconp
         }
       end
 
+      def memcached
+        return Thread.current[:memcached] if Thread.current[:memcached]
+        client = Dalli::Client.new(ENV['ISUCONP_MEMCACHED_ADDRESS'] || 'localhost:11211', {})
+        Thread.current[:memcached] = client
+        client
+      end
+
       def db
         return Thread.current[:isuconp_db] if Thread.current[:isuconp_db]
         client = Mysql2::Client.new(
@@ -104,23 +111,44 @@ module Isuconp
       def make_posts(results, all_comments: false)
         posts = []
         results.to_a.each do |post|
-          post[:comment_count] = db.xquery('SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?',
-            post[:id]
-          ).first[:count]
+          # 投稿ごとのコメント数をmemcachedからget
+          cached_comments_count = memcached.get("comments.#{post[:id]}.count")
+          if cached_comments_count
+            # キャッシュが存在したらそれを使う
+            post[:comment_count] = cached_comments_count.to_i
+          else
+            # 存在しなかったらMySQLにクエリ
+            post[:comment_count] = db.xquery('SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?',
+              post[:id]
+            ).first[:count]
+            # memcachedにset(TTL 10s)
+            memcached.set("comments.#{post[:id]}.count", post[:comment_count], 10)
+          end
 
-          query = 'SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC'
-          unless all_comments
-            query += ' LIMIT 3'
+          # 投稿ごとのコメントをmemcachedからget
+          cached_comments = memcached.get("comments.#{post[:id]}.#{all_comments.to_s}")
+          if cached_comments
+            # キャッシュが存在したらそれを使う
+            post[:comments] = cached_comments
+          else
+            # 存在しなかったらMySQLにクエリ JOINで1クエリで取得する
+            query = 'SELECT c.`comment`, c.`created_at`, u.`account_name`
+                    FROM `comments` c JOIN `users` u
+                    ON c.`user_id`=u.`id`
+                    WHERE c.`post_id` = ? ORDER BY c.`created_at` DESC'
+            unless all_comments
+              query += ' LIMIT 3'
+            end
+            comments = db.xquery(query, post[:id]).to_a
+            comments.each do |comment|
+              comment[:user] = {
+                account_name: comment[:account_name]
+              }
+            end
+            post[:comments] = comments.reverse
+            # memcachedにset(TTL 10s)
+            memcached.set("comments.#{post[:id]}.#{all_comments.to_s}", post[:comments], 10)
           end
-          comments = db.xquery(query,
-            post[:id]
-          ).to_a
-          comments.each do |comment|
-            comment[:user] = db.xquery('SELECT * FROM `users` WHERE `id` = ?',
-              comment[:user_id]
-            ).first
-          end
-          post[:comments] = comments.reverse
 
           post[:user] = {
             account_name: post[:account_name],
