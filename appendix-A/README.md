@@ -43,8 +43,8 @@
 
 ### MySQLの設定調整(約255,000点)
 
-- [MySQLの設定調整](https://github.com/tatsujin-web-performance/tatsujin-web-performance/commit/d9337bbf0031318fa25360befdca86459920e780)
+- [MySQLの設定調整](https://github.com/tatsujin-web-performance/tatsujin-web-performance/commit/ecabb326243b04fb5e7e669d034ad2eeb6297474)
 
 ### memcachedへのN+1解消(約300,000点)
 
-- [memcachedへのN+1をget_multiで解消](https://github.com/tatsujin-web-performance/tatsujin-web-performance/commit/7885e234db464078e973921c03fcb8968a776d52)
+- [memcachedへのN+1をget_multiで解消](https://github.com/tatsujin-web-performance/tatsujin-web-performance/commit/ca092dc1e02f7b3b0d79c96b1271bf0dbd4bb5b9)
