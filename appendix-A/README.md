@@ -39,7 +39,7 @@
 
 ### 外部コマンド呼び出しをやめる(約240,000点)
 
-- [opensslコマンドの呼び出しをやめてDigestを使う](https://github.com/tatsujin-web-performance/tatsujin-web-performance/commit/412d3e1b760495182518ae8b02c620b4723edd3a)
+- [opensslコマンドの呼び出しをやめてopenssl gemを使う](https://github.com/tatsujin-web-performance/tatsujin-web-performance/commit/8f3b4a8839a3583a8abd2bde0cea2e2bfa2f8c20)
 
 ### MySQLの設定調整(約255,000点)
 
