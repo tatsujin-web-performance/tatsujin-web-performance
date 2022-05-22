@@ -34,3 +34,5 @@
 ```
 
 ### [リスト5 キャッシュを生成して生成結果を保存する手法](7-5.patch)
+
+適用先 https://github.com/catatsuy/private-isu/blob/master/webapp/golang/app.go
