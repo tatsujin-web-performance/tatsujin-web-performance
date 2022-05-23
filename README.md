@@ -1,4 +1,4 @@
-# 達人が教えるWebパフォーマンスチューニング〜ISUCONから学ぶ高速化の実践 サンプルコード
+# 達人が教えるWebパフォーマンスチューニング〜ISUCONから学ぶ高速化の実践
 
 ![](cover.png)
 
@@ -49,3 +49,7 @@ ISBN：978-4-297-12846-3
 ### [付録A private-isuの攻略実践](appendix-A/README.md)
 
 ### [付録B ベンチマーカーの実装](appendix-B/example)
+
+## ライセンス
+
+MIT
