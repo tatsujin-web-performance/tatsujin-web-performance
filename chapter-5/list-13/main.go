@@ -78,7 +78,7 @@ func getUsers(ids []int) map[int]User {
 	users := map[int]User{}
 	// キャッシュから複数のキャッシュを取得 ❸
 	items, err := mc.GetMulti(keys)
-	if err == nil {
+	if err != nil {
 		return users
 	}
 	for _, it := range items {
