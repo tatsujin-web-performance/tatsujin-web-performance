@@ -65,7 +65,7 @@ func getUser(id int) User {
 	if err == nil {
 		// ユーザー情報があればJSONをデコードして返す
 		err := json.Unmarshal(it.Value, &user)
-		if err != nil {
+		if err == nil {
 			return user
 		}
 	}
