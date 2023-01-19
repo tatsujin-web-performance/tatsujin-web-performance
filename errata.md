@@ -14,6 +14,14 @@
   - 誤）Monitoing
   - 正）Monitoring
 
+- p.52 本文11行目
+  - 誤）C5.large
+  - 正）c5.large
+
+- p.74 本文2行目
+  - 誤）C5.large
+  - 正）c5.large
+
 - p.77 本文7行目
   - 誤）Request per second
   - 正）Requests per second
@@ -21,6 +29,10 @@
 - p.84 本文7行目
   - 誤）Request per second
   - 正）Requests per second
+
+- p.92 コラム4行目
+  - 誤）C5.large
+  - 正）c5.large
 
 - p.118 本文6行目
   - 誤）Web2.0
@@ -33,6 +45,14 @@
 - p.231 本文21行目
   - 誤）Receive-side Scaling
   - 正）Receive Side Scaling
+
+- p.266 本文13行目
+  - 誤）C6i.large
+  - 正）c6i.large
+
+- p.266 本文18行目
+  - 誤）C6i.large
+  - 正）c6i.large
 
 - p.340 索引
   - 誤）kTLS.......180
