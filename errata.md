@@ -68,6 +68,10 @@
   - 誤) 50回
   - 正) 20回
 
+- p.100 本文1行目
+  - 誤) /ininitlize
+  - 正) /initialize
+
 - p.141 リスト8
   - 誤) `WHERE comments`
   - 正) `WHERE comment`
