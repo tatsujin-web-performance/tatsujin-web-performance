@@ -2,10 +2,6 @@
 
 ## 1版 1刷→2刷での修正箇所
 
-- p.19 表3 負荷試験の概要 シナリオ
-  - 誤)例： ログイン→カレンダー表示→予約枠選択→確認画面→予約実行という行動をとるユーして1回やりなおすユーザーが5%
-  - 正)例： ログイン→カレンダー表示→予約枠選択→確認画面→予約実行という行動をとるユーザーが全体の95%、その後にキャンセルして1回やりなおすユーザーが5%
-
 - p.24 注1
   - 誤）http://developer.cybozu.co.jp/archives/kazuho/2010/01/cronlog-52f2.html
   - 正）https://b.hatena.ne.jp/entry/developer.cybozu.co.jp/archives/kazuho/2010/01/cronlog-52f2.html
