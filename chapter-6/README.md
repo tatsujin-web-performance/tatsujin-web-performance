@@ -1,102 +1,38 @@
-# 6章 リバースプロキシの利用
+# 7章 キャッシュの活用
 
-## 6章3節 nginxについて
+## 7章4節 具体的なキャッシュ実装方法
 
-### リスト1 /etc/nginx/nginx.confの設定
+### [リスト1 キャッシュを生成して生成結果を保存する手法](7-1)
 
-```nginx
-include /etc/nginx/conf.d/*.conf;
-include /etc/nginx/sites-enabled/*;
+### [リスト2 非同期にキャッシュ更新処理を実行する手法](7-2)
+
+### [リスト3 golang.org/x/sync/singleflightを利用したコード例](7-3)
+
+### リスト4 実行結果
+
+```
+2022/02/05 18:58:50 call HeavyGet 2
+2022/02/05 18:58:50 call HeavyGet 1
+2022/02/05 18:58:50 call HeavyGet 7
+2022/02/05 18:58:50 call HeavyGet 3
+2022/02/05 18:58:50 call HeavyGet 9
+2022/02/05 18:58:50 call HeavyGet 0
+2022/02/05 18:58:50 call HeavyGet 8
+2022/02/05 18:58:50 call HeavyGet 5
+2022/02/05 18:58:50 call HeavyGet 4
+2022/02/05 18:58:50 call HeavyGet 6
+2022/02/05 18:58:52 0
+2022/02/05 18:58:52 2
+2022/02/05 18:58:52 4
+2022/02/05 18:58:52 6
+2022/02/05 18:58:52 8
+2022/02/05 18:58:52 10
+2022/02/05 18:58:52 12
+2022/02/05 18:58:52 14
+2022/02/05 18:58:52 16
+2022/02/05 18:58:52 18
 ```
 
-### リスト2 /etc/nginx/sites-available/isucon.confの設定
+### [リスト5 キャッシュを生成して生成結果を保存する手法](7-5.patch)
 
-```nginx
-server {
-  listen 80;
-
-  client_max_body_size 10m;
-  root /home/isucon/private_isu/webapp/public/;
-
-  location / {
-    proxy_set_header Host $host;
-    proxy_pass http://localhost:8080;
-  }
-}
-```
-
-https://github.com/catatsuy/private-isu/blob/master/provisioning/image/files/etc/nginx/sites-available/isucon.conf
-
-### リスト3 静的ファイルの配信をnginx経由で行う
-
-```nginx
-server {
-  listen 80;
-
-  # 省略
-
-  location /css/ {
-    root /home/isucon/private_isu/webapp/public/;
-  }
-
-  location /js/ {
-    root /home/isucon/private_isu/webapp/public/;
-  }
-
-  location / {
-    proxy_set_header Host $host;
-    proxy_pass http://localhost:8080;
-  }
-}
-```
-
-### リスト4 expiresの設定
-
-```nginx
-  location /css/ {
-    root /home/isucon/private_isu/webapp/public/;
-    expires 1d;
-  }
-```
-
-## 6章5節 nginxによる転送時のデータ圧縮
-
-### リスト5 gzip圧縮を利用する場合の設定
-
-```nginx
-gzip on;
-gzip_types text/css text/javascript application/javascript application/x-javascript application/json;
-gzip_min_length 1k;
-```
-
-## 6章7節 nginxとアップストリームサーバーのコネクション管理
-
-### リスト6 アップストリームサーバーとのコネクションを保持する設定
-
-```nginx
-location / {
-  proxy_http_version 1.1;
-  proxy_set_header Connection "";
-  proxy_pass http://app;
-}
-```
-
-### リスト7 keepaliveとkeepalive_requestsを利用する
-
-```nginx
-upstream app {
-  server localhost:8080;
-
-  keepalive 32;
-  keepalive_requests 10000;
-}
-```
-
-## コラム：更なるnginx高速化
-
-### リスト8 sendfileとtcp_nopushを両方とも有効にする設定
-
-```nginx
-sendfile on;
-tcp_nopush on;
-```
+適用先 https://github.com/catatsuy/private-isu/blob/master/webapp/golang/app.go

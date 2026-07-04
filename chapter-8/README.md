@@ -1,140 +1,94 @@
-# 8章 押さえておきたい高速化手法
+# 9章 OSの基礎知識とチューニング
 
-## 8章1節 外部コマンド実行ではなくライブラリを利用する
+## 9-8 Linuxカーネルパラメータ
 
-### リスト1 opensslコマンドを実行するGoの初期実装
-
-```go
-func digest(src string) string {
-  out, err := exec.Command("/bin/bash", "-c", `printf "%s" `+escapeshellarg(src)+` | openssl dgst -sha512 | sed 's/^.*= //'`).Output()
-  （省略）
-```
-
-https://github.com/catatsuy/private-isu/blob/0c9a8f258c759d5133c6200c6453f82703663614/webapp/golang/app.go#L122-L131
-
-### リスト2 opensslコマンドを実行するRubyの初期実装
-
-```ruby
-def digest(src)
-  `printf "%s" #{Shellwords.shellescape(src)} | openssl dgst -sha512 | sed 's/^.*= //'`.strip
-end
-```
-
-https://github.com/catatsuy/private-isu/blob/0c9a8f258c759d5133c6200c6453f82703663614/webapp/ruby/app.rb#L78-L81
-
-### リスト3 Goの実装
-
-```go
-import (
-  "fmt"
-  "crypto/sha512"
-（省略）
-)
-
-func digest(src string) string {
-  return fmt.Sprintf("%x", sha512.Sum512([]byte(src)))
-}
-```
-
-### リスト4 Rubyの実装
-
-```ruby
-require 'openssl'
-（省略）
-
-def digest(src)
-  return OpenSSL::Digest::SHA512.hexdigest(src)
-end
-```
-
-## コラム：実装する言語によって高速になるのか
-
-### リスト5 strings.NewReplacerの利用
-
-```go
-r := strings.NewReplacer("<", "&lt;", ">", "&gt;")
-fmt.Println(r.Replace("This is <b>HTML</b>!")) // This is &lt;b&gt;HTML&lt;/b&gt;!
-```
-
-## 8章2節 開発用の設定で冗長なログを出力しない
-
-### リスト6 デバッグモードの無効、ログレベルを変更
-
-```diff
- func main() {
-  e := echo.New()
-- e.Debug = true
-- e.Logger.SetLevel(log.DEBUG)
-+ e.Debug = false
-+ e.Logger.SetLevel(log.ERROR)
-```
-
-https://github.com/isucon/isucon11-qualify/blob/1011682c2d5afcc563f4ebf0e4c88a5124f63614/webapp/go/main.go#L211-L212
-
-## 8章3節 HTTPクライアントの使い方
-
-### リスト7 res.Body.Close()を実行して、レスポンスのBodyを読み切る
-
-```go
-res, err := http.DefaultClient.Do(req)
-if err != nil {
-  log.Fatal(err)
-}
-defer res.Body.Close()
-
-_, err = io.ReadAll(res.Body)
-if err != nil {
-  log.Fatal(err)
-}
-```
-
-### リスト8 Timeoutを指定する
-
-``` go
-hClient := http.Client{
-  Timeout: 5 * time.Second,
-}
-```
-
-### リスト9 http.Transportで確認した方が良い設定
-
-``` go
-hClient := http.Client{
-  Timeout:   5 * time.Second,
-  Transport: &http.Transport{
-    MaxIdleConns:        500,
-    MaxIdleConnsPerHost: 200,
-    IdleConnTimeout:     120 * time.Second,
-  },
-}
-```
-
-## 8章4節 静的ファイル配信をリバースプロキシから直接配信する
-
-### リスト10 /home/isucon/private_isu/webapp/public/image/ディレクトリ上に画像ファイルを配置する
+### リスト1 UNIX domain socketを用いた例
 
 ```nginx
 server {
-  # 省略
-  location /image/ {
-    root /home/isucon/private_isu/webapp/public/;
-    try_files $uri @app;
-  }
 
-  location @app {
+  ## 80番ポートで接続を待機する際の設定( # を付けてコメントアウト済)
+  # listen 80;
+
+  ## /var/run/nginx.sock で接続を待機する際の設定
+  listen unix:/var/run/nginx.sock;
+
+<以下略>
+```
+
+### リスト2 unicorn_config.rb にある設定
+
+```ruby
+worker_processes 1
+preload_app true
+listen "0.0.0.0:8080"
+```
+
+### リスト3 /tmp/webapp.sock に変更
+
+```ruby
+worker_processes 1
+preload_app true
+listen "/tmp/webapp.sock"
+```
+
+### リスト4 Go実装を書き換える
+
+```go
+## "/tmp/webapp.sock" で listen(2) する
+listener, err := net.Listen("unix", "/tmp/webapp.sock")
+if err != nil {
+        log.Fatalf("Failed to listen on /tmp/webapp.sock: %s.", err)
+}
+defer func() {
+        err := listener.Close()
+        if err != nil {
+                log.Fatalf("Failed to close listener: %s.", err)
+        }
+}()
+
+## systemdなどから送信されるシグナルを受け取る
+c := make(chan os.Signal, 2)
+signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+go func() {
+        <-c
+        err := listener.Close()
+        if err != nil {
+                log.Fatalf("Failed to close listener: %s.", err)
+        }
+}()
+
+log.Fatal(http.Serve(listener, mux))
+```
+
+### リスト5 初期状態の設定
+
+```nginx
+server {
+<省略>
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_pass http://localhost:8080;
   }
+}  
 ```
 
-## 8章5節 HTTPヘッダーを活用してクライアント側にキャッシュさせる
-
-### リスト11 Cache-Controlヘッダーをレスポンスに含む設定
+### リスト6 /tmp/webapp.sock をアップストリームサーバーとして指定した設定
 
 ```nginx
+upstream webapp {
+  server unix:/tmp/webapp.sock;
+}
+
 server {
-  # 省略
-  location /image/ {
-    root /home/isucon/private_isu/webapp/public/;
-    expires 1d;
+<省略>
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_pass http://webapp;
   }
+}
 ```

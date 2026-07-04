@@ -1,94 +1,29 @@
-# 9章 OSの基礎知識とチューニング
+# 4章 シナリオを持った負荷試験
 
-## 9-8 Linuxカーネルパラメータ
+4章「シナリオを持った負荷試験」のサンプルコードです。
 
-### リスト1 UNIX domain socketを用いた例
+## 4-2 k6による単純な負荷試験
 
-```nginx
-server {
+- リスト1 単一URLにリクエストを送信するシナリオ [`ab.js`](ab.js)
 
-  ## 80番ポートで接続を待機する際の設定( # を付けてコメントアウト済)
-  # listen 80;
+## 4-3 k6でシナリオを記述する
 
-  ## /var/run/nginx.sock で接続を待機する際の設定
-  listen unix:/var/run/nginx.sock;
+- リスト2 対象 URL を生成する関数を定義した [`config.js`](config.js)
+- リスト3 Web サービスの初期化処理を行うシナリオ [`initialize.js`](initialize.js)
+- リスト4 ユーザーがログインしてコメントを投稿するシナリオ [`comment.js`](comment.js)
+- リスト6  ログインしてフォームから画像をアップロードするシナリオ [`postimage.js`](postimage.js)
+- リスト7 アカウント情報を定義する JSON ファイル [`accounts.json`](accounts.json)
+- リスト8 [`accounts.json`](accounts.json) を `SharedArray` として読み込むモジュール [`accounts.js`](accounts.js)
 
-<以下略>
+(注) 「リスト9 [`accounts.js`](accounts.js) を `import` して `getAccount()` 関数を利用するシナリオ」にある変更を [`comment.js`](comment.js) と [`postimage.js`](postimage.js) に対して適用する場合は、このディレクトリで以下のコマンドを実行してpatchを適用してください。
+
+```console
+$ patch -p2 < comment.js.patch
+$ patch -p2 < postimage.js.patch
 ```
 
-### リスト2 unicorn_config.rb にある設定
+## 4-4 複数のシナリオを組み合わせた統合シナリオを実行する
 
-```ruby
-worker_processes 1
-preload_app true
-listen "0.0.0.0:8080"
-```
+- リスト10 複数のシナリオ関数を組み合わせて実行する [`integrated.js`](integrated.js)
 
-### リスト3 /tmp/webapp.sock に変更
-
-```ruby
-worker_processes 1
-preload_app true
-listen "/tmp/webapp.sock"
-```
-
-### リスト4 Go実装を書き換える
-
-```go
-## "/tmp/webapp.sock" で listen(2) する
-listener, err := net.Listen("unix", "/tmp/webapp.sock")
-if err != nil {
-        log.Fatalf("Failed to listen on /tmp/webapp.sock: %s.", err)
-}
-defer func() {
-        err := listener.Close()
-        if err != nil {
-                log.Fatalf("Failed to close listener: %s.", err)
-        }
-}()
-
-## systemdなどから送信されるシグナルを受け取る
-c := make(chan os.Signal, 2)
-signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-go func() {
-        <-c
-        err := listener.Close()
-        if err != nil {
-                log.Fatalf("Failed to close listener: %s.", err)
-        }
-}()
-
-log.Fatal(http.Serve(listener, mux))
-```
-
-### リスト5 初期状態の設定
-
-```nginx
-server {
-<省略>
-  location / {
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_pass http://localhost:8080;
-  }
-}  
-```
-
-### リスト6 /tmp/webapp.sock をアップストリームサーバーとして指定した設定
-
-```nginx
-upstream webapp {
-  server unix:/tmp/webapp.sock;
-}
-
-server {
-<省略>
-  location / {
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_pass http://webapp;
-  }
-}
-```
+(注) [`integrated.js`](integrated.js) は [`comments.js`](comments.js) と [`postimage.js`](postimage.js) に上記のpatchが適用済みであることを前提にしています。
