@@ -1,6 +1,6 @@
-# 6章 リバースプロキシの利用
+# 5章 リバースプロキシの利用
 
-## 6章3節 nginxについて
+## 5章3節 nginxとは
 
 ### リスト1 /etc/nginx/nginx.confの設定
 
@@ -59,7 +59,7 @@ server {
   }
 ```
 
-## 6章5節 nginxによる転送時のデータ圧縮
+## 5章5節 nginxによる転送時のデータ圧縮
 
 ### リスト5 gzip圧縮を利用する場合の設定
 
@@ -69,9 +69,62 @@ gzip_types text/css text/javascript application/javascript application/x-javascr
 gzip_min_length 1k;
 ```
 
-## 6章7節 nginxとアップストリームサーバーのコネクション管理
+## 5章7節 nginxによるEarly Hintsの活用
 
-### リスト6 アップストリームサーバーとのコネクションを保持する設定
+### コード例 Goで103 Early Hintsを返す
+
+```go
+package main
+
+import (
+  "net/http"
+)
+
+func earlyHintsHandler(w http.ResponseWriter, r *http.Request) {
+  w.Header().Add("Link", "</css/ea.css>; rel=preload; as=style")
+  w.Header().Add("Link", "</js/ea.js>; rel=preload; as=script")
+
+  // 103（情報レスポンス）を送る
+  w.WriteHeader(http.StatusEarlyHints)
+
+  // 最終レスポンス（200）を返す
+  w.Header().Set("Content-Type", "text/html; charset=utf-8")
+  w.Header().Set("Cache-Control", "private")
+
+  w.WriteHeader(http.StatusOK)
+
+  w.Write([]byte("<!doctype html><html><head></head><body>Hello</body></html>"))
+}
+
+func main() {
+  mux := http.NewServeMux()
+  mux.HandleFunc("/", earlyHintsHandler)
+  http.ListenAndServe("127.0.0.1:8000", mux)
+}
+```
+
+### 設定例 nginxでEarly Hintsを有効にする
+
+```nginx
+upstream easerver {
+  server 127.0.0.1:8000;
+}
+
+server {
+  ...（省略）
+
+  location = / {
+    # クライアント側：HTTP/2またはHTTP/3のリクエストにだけ103を転送する
+    early_hints $http2$http3;
+
+    proxy_pass http://easerver;
+  }
+}
+```
+
+## 5章8節 nginxとアップストリームサーバーのコネクション管理
+
+### リスト6 nginx 1.29.7より前でアップストリームサーバーとのコネクションを保持する設定
 
 ```nginx
 location / {
@@ -81,7 +134,7 @@ location / {
 }
 ```
 
-### リスト7 keepaliveとkeepalive_requestsを利用する
+### リスト7 keepalive関連のパラメータを明示的に指定する
 
 ```nginx
 upstream app {
