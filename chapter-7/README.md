@@ -1,6 +1,6 @@
-# 8章 押さえておきたい高速化手法
+# 7章 押さえておきたい高速化手法
 
-## 8章1節 外部コマンド実行ではなくライブラリを利用する
+## 7章1節 外部コマンド実行ではなく、ライブラリを利用する
 
 ### リスト1 opensslコマンドを実行するGoの初期実装
 
@@ -56,7 +56,7 @@ r := strings.NewReplacer("<", "&lt;", ">", "&gt;")
 fmt.Println(r.Replace("This is <b>HTML</b>!")) // This is &lt;b&gt;HTML&lt;/b&gt;!
 ```
 
-## 8章2節 開発用の設定で冗長なログを出力しない
+## 7章2節 開発用の設定で冗長なログを出力しない
 
 ### リスト6 デバッグモードの無効、ログレベルを変更
 
@@ -71,7 +71,7 @@ fmt.Println(r.Replace("This is <b>HTML</b>!")) // This is &lt;b&gt;HTML&lt;/b&gt
 
 https://github.com/isucon/isucon11-qualify/blob/1011682c2d5afcc563f4ebf0e4c88a5124f63614/webapp/go/main.go#L211-L212
 
-## 8章3節 HTTPクライアントの使い方
+## 7章3節 HTTPクライアントの使い方
 
 ### リスト7 res.Body.Close()を実行して、レスポンスのBodyを読み切る
 
@@ -82,7 +82,7 @@ if err != nil {
 }
 defer res.Body.Close()
 
-_, err = io.ReadAll(res.Body)
+_, err = io.Copy(io.Discard, res.Body)
 if err != nil {
   log.Fatal(err)
 }
@@ -109,7 +109,7 @@ hClient := http.Client{
 }
 ```
 
-## 8章4節 静的ファイル配信をリバースプロキシから直接配信する
+## 7章4節 静的ファイル配信をリバースプロキシから直接配信する
 
 ### リスト10 /home/isucon/private_isu/webapp/public/image/ディレクトリ上に画像ファイルを配置する
 
@@ -126,7 +126,7 @@ server {
   }
 ```
 
-## 8章5節 HTTPヘッダーを活用してクライアント側にキャッシュさせる
+## 7章5節 HTTPヘッダーを活用してクライアント側にキャッシュさせる
 
 ### リスト11 Cache-Controlヘッダーをレスポンスに含む設定
 

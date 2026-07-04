@@ -1,0 +1,39 @@
+diff --git a/webapp/golang/app.go b/webapp/golang/app.go
+index 7192853..03d93f3 100644
+--- a/webapp/golang/app.go
++++ b/webapp/golang/app.go
+@@ -178,10 +178,32 @@ func makePosts(ctx context.Context, results []Post, csrfToken string, allComments bool) ([]Post, error) {
+ 	var posts []Post
+ 
+ 	for _, p := range results {
+-		err := db.GetContext(ctx, &p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
+-		if err != nil {
++		// 投稿ごとのコメント数をmemcachedにキャッシュする（cache-aside）
++		key := fmt.Sprintf("comments.%d.count", p.ID)
++		val, err := memcacheClient.Get(key)
++		if err != nil && err != memcache.ErrCacheMiss {
+ 			return nil, err
+ 		}
++		if err == memcache.ErrCacheMiss {
++			// キャッシュが存在しない場合はMySQLからコメント数を取得する
++			err = db.GetContext(ctx, &p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
++			if err != nil {
++				return nil, err
++			}
++
++			// 10秒でexpireするようにSetする
++			err = memcacheClient.Set(&memcache.Item{
++				Key:        key,
++				Value:      []byte(strconv.Itoa(p.CommentCount)),
++				Expiration: 10,
++			})
++			if err != nil {
++				return nil, err
++			}
++		} else {
++			// キャッシュが存在していればキャッシュのデータを代入する
++			p.CommentCount, _ = strconv.Atoi(string(val.Value))
++		}
+ 
+ 		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+ 		if !allComments {
