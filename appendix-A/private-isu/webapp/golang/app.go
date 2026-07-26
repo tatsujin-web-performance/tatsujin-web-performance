@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	crand "crypto/rand"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -185,35 +186,65 @@ func makePosts(ctx context.Context, results []PostWithAccount, csrfToken string,
 	var posts []Post
 
 	for _, p := range results {
-		err := db.GetContext(ctx, &p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
-		if !allComments {
-			query += " LIMIT 3"
-		}
-		var comments []Comment
-		err = db.SelectContext(ctx, &comments, query, p.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range comments {
-			err := db.GetContext(ctx, &comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID)
+		// まずはコメント数をmemcachedから取ってくる
+		c, err := memcacheClient.Get(fmt.Sprintf("comments.%d.count", p.ID))
+		if err == nil {
+			// memcachedにあった場合はそれを使う
+			p.CommentCount, _ = strconv.Atoi(string(c.Value))
+		} else {
+			// memcachedにない場合はDBから取ってきてmemcachedに保存する
+			err := db.GetContext(ctx, &p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
 			if err != nil {
 				return nil, err
 			}
+			memcacheClient.Set(&memcache.Item{
+				Key:        fmt.Sprintf("comments.%d.count", p.ID),
+				Value:      []byte(strconv.Itoa(p.CommentCount)),
+				Expiration: 10, // 10秒キャッシュ
+			})
 		}
 
-		// reverse
-		for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
-			comments[i], comments[j] = comments[j], comments[i]
+		var comments []Comment
+		// 投稿ごとのコメントをmemcachedから取ってくる
+		if c, err := memcacheClient.Get(fmt.Sprintf("comments.%d.%t", p.ID, allComments)); err == nil {
+			// memcachedにあった場合はそれを使う
+			err := json.Unmarshal(c.Value, &comments)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// 存在しなかったらMySQLにクエリしてmemcachedに保存する
+			commentWithAccount := []struct {
+				Comment
+				AccountName string `db:"account_name"`
+			}{}
+			query := `SELECT c.comment, c.created_at, u.account_name
+				FROM comments c JOIN users u
+				ON c.user_id=u.id
+				WHERE c.post_id = ? ORDER BY c.created_at DESC`
+			if !allComments {
+				query += " LIMIT 3"
+			}
+			err = db.SelectContext(ctx, &commentWithAccount, query, p.ID)
+			if err != nil {
+				return nil, err
+			}
+			for _, c := range commentWithAccount {
+				c.Comment.User = User{AccountName: c.AccountName}
+				comments = append(comments, c.Comment)
+			}
+			// memcachedに保存する
+			b, err := json.Marshal(comments)
+			if err != nil {
+				return nil, err
+			}
+			memcacheClient.Set(&memcache.Item{
+				Key:        fmt.Sprintf("comments.%d.%t", p.ID, allComments),
+				Value:      b,
+				Expiration: 10, // 10秒キャッシュ
+			})
 		}
-
 		p.Comments = comments
-
 		p.CSRFToken = csrfToken
 		p.Post.User = User{AccountName: p.AccountName}
 		posts = append(posts, p.Post)
@@ -784,6 +815,11 @@ func postComment(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		return
 	}
+
+	// コメントが投稿されたのでこの投稿に関するキャッシュを破棄する
+	memcacheClient.Delete(fmt.Sprintf("comments.%d.count", postID))
+	memcacheClient.Delete(fmt.Sprintf("comments.%d.true", postID))
+	memcacheClient.Delete(fmt.Sprintf("comments.%d.false", postID))
 
 	http.Redirect(w, r, fmt.Sprintf("/posts/%d", postID), http.StatusFound)
 }
