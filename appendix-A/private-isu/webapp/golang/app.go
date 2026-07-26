@@ -68,6 +68,11 @@ type Comment struct {
 	User      User
 }
 
+type PostWithAccount struct {
+	Post
+	AccountName string `db:"account_name"`
+}
+
 var memcacheClient *memcache.Client
 
 func init() {
@@ -176,7 +181,7 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 	}
 }
 
-func makePosts(ctx context.Context, results []Post, csrfToken string, allComments bool) ([]Post, error) {
+func makePosts(ctx context.Context, results []PostWithAccount, csrfToken string, allComments bool) ([]Post, error) {
 	var posts []Post
 
 	for _, p := range results {
@@ -209,19 +214,9 @@ func makePosts(ctx context.Context, results []Post, csrfToken string, allComment
 
 		p.Comments = comments
 
-		err = db.GetContext(ctx, &p.User, "SELECT * FROM `users` WHERE `id` = ?", p.UserID)
-		if err != nil {
-			return nil, err
-		}
-
 		p.CSRFToken = csrfToken
-
-		if p.User.DelFlg == 0 {
-			posts = append(posts, p)
-		}
-		if len(posts) >= postsPerPage {
-			break
-		}
+		p.Post.User = User{AccountName: p.AccountName}
+		posts = append(posts, p.Post)
 	}
 
 	return posts, nil
@@ -393,9 +388,14 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	me := getSessionUser(r)
 
-	results := []Post{}
-
-	err := db.SelectContext(ctx, &results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+	results := []PostWithAccount{}
+	err := db.SelectContext(ctx, &results, `
+		SELECT p.id, p.user_id, p.body, p.created_at, p.mime, u.account_name
+		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		WHERE u.del_flg = 0
+		ORDER BY p.created_at DESC
+		LIMIT ?
+	`, postsPerPage)
 	if err != nil {
 		log.Print(err)
 		return
@@ -440,9 +440,14 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := []Post{}
-
-	err = db.SelectContext(ctx, &results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC", user.ID)
+	results := []PostWithAccount{}
+	err = db.SelectContext(ctx, &results, `
+		SELECT p.id, p.user_id, p.body, p.mime, p.created_at, u.account_name
+		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		WHERE p.user_id = ? AND u.del_flg = 0
+		ORDER BY p.created_at DESC
+		LIMIT ?
+	`, user.ID, postsPerPage)
 	if err != nil {
 		log.Print(err)
 		return
@@ -530,8 +535,14 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := []Post{}
-	err = db.SelectContext(ctx, &results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC", t.Format(ISO8601Format))
+	results := []PostWithAccount{}
+	err = db.SelectContext(ctx, &results, `
+		SELECT p.id, p.user_id, p.body, p.mime, p.created_at, u.account_name
+		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		WHERE p.created_at <= ? AND u.del_flg = 0
+		ORDER BY p.created_at DESC
+		LIMIT ?
+	`, t.Format(ISO8601Format), postsPerPage)
 	if err != nil {
 		log.Print(err)
 		return
@@ -567,8 +578,12 @@ func getPostsID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := []Post{}
-	err = db.SelectContext(ctx, &results, "SELECT * FROM `posts` WHERE `id` = ?", pid)
+	results := []PostWithAccount{}
+	err = db.SelectContext(ctx, &results, `
+		SELECT p.id, p.user_id, p.body, p.created_at, p.mime, u.account_name
+		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		WHERE p.id = ? AND u.del_flg = 0
+	`, pid)
 	if err != nil {
 		log.Print(err)
 		return
