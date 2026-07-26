@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -625,16 +626,19 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mime := ""
+	mime, ext := "", ""
 	if file != nil {
-		// 投稿のContent-Typeからファイルのタイプを決定する
+		// 投稿のContent-Typeからファイルのタイプと拡張子を決定する
 		contentType := header.Header["Content-Type"][0]
 		if strings.Contains(contentType, "jpeg") {
 			mime = "image/jpeg"
+			ext = "jpg"
 		} else if strings.Contains(contentType, "png") {
 			mime = "image/png"
+			ext = "png"
 		} else if strings.Contains(contentType, "gif") {
 			mime = "image/gif"
+			ext = "gif"
 		} else {
 			session := getSession(r)
 			session.Values["notice"] = "投稿できる画像形式はjpgとpngとgifだけです"
@@ -645,13 +649,21 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	filedata, err := io.ReadAll(file)
+	// 画像ファイルの保存先のパスを決定する
+	dir := filepath.Join("../public/image")
+	// アップロードされた画像データをテンポラリファイルに保存する
+	tmpfile, err := os.CreateTemp(dir, "isuconp-")
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	filesize, err := io.Copy(tmpfile, file)
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
-	if len(filedata) > UploadLimit {
+	if filesize > UploadLimit {
 		session := getSession(r)
 		session.Values["notice"] = "ファイルサイズが大きすぎます"
 		session.Save(r, w)
@@ -666,7 +678,7 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		query,
 		me.ID,
 		mime,
-		filedata,
+		"", // 画像データはDBに保存しない
 		r.FormValue("body"),
 	)
 	if err != nil {
@@ -679,6 +691,14 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		return
 	}
+
+	// テンポラリファイルを所定のファイル名にリネームする
+	filename := filepath.Join(dir, fmt.Sprintf("%d.%s", pid, ext))
+	if err := os.Rename(tmpfile.Name(), filename); err != nil {
+		log.Print(err)
+		return
+	}
+	os.Chmod(filename, 0644)
 
 	http.Redirect(w, r, "/posts/"+strconv.FormatInt(pid, 10), http.StatusFound)
 }
@@ -705,7 +725,15 @@ func getImage(w http.ResponseWriter, r *http.Request) {
 		ext == "png" && post.Mime == "image/png" ||
 		ext == "gif" && post.Mime == "image/gif" {
 		w.Header().Set("Content-Type", post.Mime)
-		_, err := w.Write(post.Imgdata)
+		// DBから取得した画像データをファイルとレスポンスボディに同時に書き込む
+		f, err := os.Create(filepath.Join("../public/image", fmt.Sprintf("%d.%s", post.ID, ext)))
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		defer f.Close()
+		mw := io.MultiWriter(w, f)
+		_, err = mw.Write(post.Imgdata)
 		if err != nil {
 			log.Print(err)
 			return
