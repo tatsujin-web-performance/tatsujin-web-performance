@@ -54,6 +54,8 @@ ISBN：978-4-297-12846-3
 
 ### [Chapter9 シナリオを持った負荷試験](chapter-9/README.md)
 
+### [Chapter10 分散トレーシング](chapter-10/README.md)
+
 ### [付録A private-isuの攻略実践](appendix-A/README.md)
 
 ### [付録B ベンチマーカーの実装](appendix-B/example)
