@@ -1,12 +1,13 @@
+{{ define "content" }}
 <div class="header">
   <h1>ユーザー登録</h1>
 </div>
 
-<% if flash[:notice] %>
+{{if .Flash}}
 <div id="notice-message" class="alert alert-danger">
-  <%= escape_html(flash[:notice]) %>
+  {{.Flash}}
 </div>
-<% end %>
+{{end}}
 
 <div class="submit">
   <form method="post" action="/register">
@@ -23,3 +24,4 @@
     </div>
   </form>
 </div>
+{{ end }}
