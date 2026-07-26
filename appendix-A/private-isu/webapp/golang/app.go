@@ -422,7 +422,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	results := []PostWithAccount{}
 	err := db.SelectContext(ctx, &results, `
 		SELECT p.id, p.user_id, p.body, p.created_at, p.mime, u.account_name
-		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		FROM posts AS p STRAIGHT_JOIN users AS u ON (p.user_id=u.id)
 		WHERE u.del_flg = 0
 		ORDER BY p.created_at DESC
 		LIMIT ?
@@ -474,7 +474,7 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 	results := []PostWithAccount{}
 	err = db.SelectContext(ctx, &results, `
 		SELECT p.id, p.user_id, p.body, p.mime, p.created_at, u.account_name
-		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		FROM posts AS p FORCE INDEX(posts_user_idx) JOIN users AS u ON (p.user_id=u.id)
 		WHERE p.user_id = ? AND u.del_flg = 0
 		ORDER BY p.created_at DESC
 		LIMIT ?
@@ -569,7 +569,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	results := []PostWithAccount{}
 	err = db.SelectContext(ctx, &results, `
 		SELECT p.id, p.user_id, p.body, p.mime, p.created_at, u.account_name
-		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		FROM posts AS p STRAIGHT_JOIN users AS u ON (p.user_id=u.id)
 		WHERE p.created_at <= ? AND u.del_flg = 0
 		ORDER BY p.created_at DESC
 		LIMIT ?
@@ -612,7 +612,7 @@ func getPostsID(w http.ResponseWriter, r *http.Request) {
 	results := []PostWithAccount{}
 	err = db.SelectContext(ctx, &results, `
 		SELECT p.id, p.user_id, p.body, p.created_at, p.mime, u.account_name
-		FROM posts AS p JOIN users AS u ON (p.user_id=u.id)
+		FROM posts AS p STRAIGHT_JOIN users AS u ON (p.user_id=u.id)
 		WHERE p.id = ? AND u.del_flg = 0
 	`, pid)
 	if err != nil {
