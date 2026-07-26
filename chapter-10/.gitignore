@@ -1,0 +1,7 @@
+# built binaries
+example/backend/backend
+example/frontend/frontend
+example-auto/backend/backend
+example-auto/frontend/frontend
+# SQLite database created at runtime
+**/memos.db
