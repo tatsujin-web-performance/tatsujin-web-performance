@@ -1,4 +1,4 @@
-// k6mからhttp処理のmoduleをimport
+// k6からhttp処理のmoduleをimport
 import http from "k6/http";
 
 // k6からcheck関数をimport
@@ -10,7 +10,7 @@ import { parseHTML } from "k6/html";
 // url関数をimport
 import { url } from "./config.js";
 
-// ベンチマーカーがが実行するシナリオ関数
+// ベンチマーカーが実行するシナリオ関数
 // ログインしてからコメントを投稿する
 export default function () {
   // /login に対してアカウント名とパスワードを送信
