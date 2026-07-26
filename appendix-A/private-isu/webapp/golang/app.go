@@ -885,6 +885,7 @@ func main() {
 	}
 	cfg.ParseTime = true
 	cfg.Loc = time.Local
+	cfg.InterpolateParams = true // defaultはfalseなので明示的に指定
 	dsn := cfg.FormatDSN()
 
 	db, err = sqlx.Open("mysql", dsn)
