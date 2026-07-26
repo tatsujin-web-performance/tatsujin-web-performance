@@ -82,6 +82,7 @@ func init() {
 		memdAddr = "localhost:11211"
 	}
 	memcacheClient = memcache.New(memdAddr)
+	memcacheClient.MaxIdleConns = 20 // アイドル状態で保持する接続数(デフォルトは2)
 	store = gsm.NewMemcacheStore(memcacheClient, "iscogram_", []byte("sendagaya"))
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
@@ -916,6 +917,9 @@ func main() {
 		log.Fatalf("Failed to connect to DB: %s.", err.Error())
 	}
 	defer db.Close()
+	// アイドル状態で保持する接続数と最大接続数を設定する
+	db.SetMaxIdleConns(20)
+	db.SetMaxOpenConns(20)
 
 	r := chi.NewRouter()
 
