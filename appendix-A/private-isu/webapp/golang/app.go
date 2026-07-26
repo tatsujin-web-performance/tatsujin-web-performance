@@ -173,10 +173,19 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 func makePosts(ctx context.Context, results []PostWithAccount, csrfToken string, allComments bool) ([]Post, error) {
 	var posts []Post
 
+	// あらかじめキャッシュのキーを一覧にする
+	countKeys := []string{}
+	commentKeys := []string{}
 	for _, p := range results {
-		// まずはコメント数をmemcachedから取ってくる
-		c, err := memcacheClient.Get(fmt.Sprintf("comments.%d.count", p.ID))
-		if err == nil {
+		countKeys = append(countKeys, fmt.Sprintf("comments.%d.count", p.ID))
+		commentKeys = append(commentKeys, fmt.Sprintf("comments.%d.%t", p.ID, allComments))
+	}
+	// 複数のキーを一度に取得する
+	cachedCounts, _ := memcacheClient.GetMulti(countKeys)
+	cachedComments, _ := memcacheClient.GetMulti(commentKeys)
+
+	for _, p := range results {
+		if c, ok := cachedCounts[fmt.Sprintf("comments.%d.count", p.ID)]; ok {
 			// memcachedにあった場合はそれを使う
 			p.CommentCount, _ = strconv.Atoi(string(c.Value))
 		} else {
@@ -193,8 +202,7 @@ func makePosts(ctx context.Context, results []PostWithAccount, csrfToken string,
 		}
 
 		var comments []Comment
-		// 投稿ごとのコメントをmemcachedから取ってくる
-		if c, err := memcacheClient.Get(fmt.Sprintf("comments.%d.%t", p.ID, allComments)); err == nil {
+		if c, ok := cachedComments[fmt.Sprintf("comments.%d.%t", p.ID, allComments)]; ok {
 			// memcachedにあった場合はそれを使う
 			err := json.Unmarshal(c.Value, &comments)
 			if err != nil {
@@ -213,7 +221,7 @@ func makePosts(ctx context.Context, results []PostWithAccount, csrfToken string,
 			if !allComments {
 				query += " LIMIT 3"
 			}
-			err = db.SelectContext(ctx, &commentWithAccount, query, p.ID)
+			err := db.SelectContext(ctx, &commentWithAccount, query, p.ID)
 			if err != nil {
 				return nil, err
 			}
